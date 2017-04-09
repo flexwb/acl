@@ -16,8 +16,11 @@ class CreateUserAclTable extends Migration
         Schema::create('user_acl', function (Blueprint $table) {
             
             $table->increments('id');
+            $table->string("table");
             $table->unsignedInteger("acl_group_id");
             $table->unsignedInteger("user_id");
+            $table->boolean('read');
+            $table->string('write');
             $table->timestamps();
         });
     }

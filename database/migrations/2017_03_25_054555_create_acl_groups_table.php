@@ -15,9 +15,11 @@ class CreateAclGroupsTable extends Migration
     {
         Schema::create('acl_groups', function (Blueprint $table) {
             $table->increments('id');
-            $table->string("name");
-            $table->string("ref_table")->nullable();
-            $table->unsignedInteger("ref_id")->nullable();
+            $table->string("table");
+            $table->string("acl_key_type");
+            $table->string("acl_ref_table")->nullable();
+            $table->string("acl_ref_key")->nullable();
+            $table->string("acl_group_table");
             $table->timestamps();
         });
     }
