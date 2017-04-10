@@ -39,8 +39,8 @@ class AclService {
     
     public function getAuthUser() {
         
-        $id= \Request::get('id');
-        return (object) ['id' => $id];
+        $authUser = \Auth::user();
+        return $authUser;
         
     }
 
