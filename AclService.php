@@ -15,16 +15,17 @@ class AclService {
                 ->get();
 
         foreach($aclDefs as $acl) {
+//            dd($acl);
             $userId = $this->getAuthuser()->id;
+//            dd($userId);
             $allowed = \DB::table($acl->acl_res_table)
                     ->select($acl->acl_res_table.".id As id")
-                    ->join($acl->acl_user_table, "$acl->acl_user_table.$acl->acl_res_field", "$acl->acl_res_table.$acl->acl_user_field")
+                    ->join($acl->acl_user_table, "$acl->acl_res_table.$acl->acl_res_field", "$acl->acl_user_table.$acl->acl_res_field")
                     ->where($acl->acl_user_table.".user_id", $userId)
                     ->get();
+
 //            dd($allowed);
 //
-//                    ->where('table', $this->table)
-//                    ->where('user_id', $userId)->get();
             $allowedIds = $allowed->pluck('id');
 //            dd($allowedIds);
             
@@ -62,8 +63,8 @@ class AclService {
     
     public function getAuthUser() {
         
-//        $authUser = \Auth::user();
-        $authUser = (object) ['id' => 1];
+        $authUser = \Auth::user();
+//        $authUser = (object) ['id' => 1];
         return $authUser;
         
     }
