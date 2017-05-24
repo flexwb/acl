@@ -6,6 +6,7 @@ class AclService {
     
     protected $table = "";
     protected $q;
+    protected $allowedIds = [];
 
     public function applyTo($q) {
         $this->checkTableSet();
@@ -13,7 +14,8 @@ class AclService {
         $aclDefs = \DB::table('acl_groups')
                 ->where('table', $this->table)
                 ->get();
-
+        
+//        dd($aclDefs);
         foreach($aclDefs as $acl) {
 //            dd($acl);
             $userId = $this->getAuthuser()->id;
@@ -30,19 +32,62 @@ class AclService {
 //            dd($allowedIds);
             
             if($acl->acl_key_type == "own") {
-                $this->q = $this->viaOwnValue($acl, $allowedIds);
+                $this->viaOwnValue($acl, $allowedIds);
+            } else if($acl->acl_key_type == "child") {
+                $this->viaHasManyValue($acl, $allowedIds);
             }
             
             
         }
+        
+        $this->q->whereIn('id', $this->allowedIds);
+        
         
         return $this->q;
     }
     
     public function viaOwnValue($acl, $allowedIds) {
         
-        return $this->q->whereIn('id', $allowedIds);
+        $this->addAppendAllowedIds($allowedIds);
+       
         
+    }
+    
+    public function addAppendAllowedIds($allowedIds) {
+        
+        if(empty($this->allowedIds)) {
+            $this->allowedIds = $allowedIds;
+        } else {
+            $this->allowedIds = $this->allowedIds->merge($allowedIds);
+            
+        }
+        
+    }
+    
+    public function viaHasManyValue($acl, $userAllowedIds) {
+        
+//        dd($acl);
+        $joinDef = $this->findParentJoinDef($acl, 'hasMany');
+        $allowedIds = \DB::table($joinDef->table)
+                ->select($joinDef->table.'.id as id')
+                ->join($joinDef->link_table, $joinDef->table.".".$joinDef->field, $joinDef->link_table.".".$joinDef->link_field)
+                ->whereIn($joinDef->field, $userAllowedIds)
+                ->get()->pluck('id');
+        
+        
+        $this->addAppendAllowedIds($allowedIds);
+        
+    }
+    
+    public function findParentJoinDef($acl, $linkType) {
+        if($linkType == 'hasMany') {
+            $joinDef = \DB::table('eds_fields')->where('table', $acl->table)->where('link_table', $acl->acl_res_table)->first();
+        }
+        if(!empty($joinDef)) {
+            return $joinDef;
+        } else {
+            abort('can not find join def in acl');
+        }
     }
     
     public function forRes($table) {
