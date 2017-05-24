@@ -86,7 +86,7 @@ class AclService {
         if(!empty($joinDef)) {
             return $joinDef;
         } else {
-            abort('can not find join def in acl');
+            abort('can not find join def in acl AclService.php');
         }
     }
     
