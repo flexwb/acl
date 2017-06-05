@@ -14,27 +14,43 @@ class AclService {
         $aclDefs = \DB::table('acl_groups')
                 ->where('table', $this->table)
                 ->get();
-        
-//        dd($aclDefs);
+
+
+
+        if($aclDefs->isEmpty()) {
+            return $this->q;
+        }
+
+       
+       // dd($aclDefs);
         foreach($aclDefs as $acl) {
 //            dd($acl);
             $userId = $this->getAuthuser()->id;
-//            dd($userId);
-            $allowed = \DB::table($acl->acl_res_table)
-                    ->select($acl->acl_res_table.".id As id")
-                    ->join($acl->acl_user_table, "$acl->acl_res_table.$acl->acl_res_field", "$acl->acl_user_table.$acl->acl_res_field")
-                    ->where($acl->acl_user_table.".user_id", $userId)
-                    ->get();
+           // dd($userId);
+            if($acl->acl_key_type == '1-n') {
+                $allowed = \DB::table($acl->acl_res_table)
+                        ->select($acl->acl_res_table.".id As id")
+                        ->join($acl->acl_user_table, "$acl->acl_res_table.$acl->acl_res_field", "$acl->acl_user_table.$acl->acl_res_field")
+                        ->where($acl->acl_user_table.".user_id", $userId)
+                        ->get();
+            }
 
-//            dd($allowed);
-//
+            if($acl->acl_key_type == 'n-n') {
+                $allowed = \DB::table($acl->acl_res_table)
+                        ->select($acl->acl_res_table.".".$acl->acl_res_field." as id")
+                        ->join($acl->acl_user_table, "$acl->acl_res_table.$acl->acl_res_field", "$acl->acl_user_table.$acl->acl_res_field")
+                        ->where($acl->acl_user_table.".user_id", $userId)
+                        ->get();
+            }
+
+
             $allowedIds = $allowed->pluck('id');
 //            dd($allowedIds);
             
             if($acl->acl_key_type == "own") {
                 $this->viaOwnValue($acl, $allowedIds);
-            } else if($acl->acl_key_type == "child") {
-                $this->viaHasManyValue($acl, $allowedIds);
+            } else {
+                $this->viaForeignValue($acl, $allowedIds);
             }
             
             
@@ -64,29 +80,47 @@ class AclService {
         
     }
     
-    public function viaHasManyValue($acl, $userAllowedIds) {
+    public function viaForeignValue($acl, $userAllowedIds) {
         
-//        dd($acl);
-        $joinDef = $this->findParentJoinDef($acl, 'hasMany');
-        $allowedIds = \DB::table($joinDef->table)
-                ->select($joinDef->table.'.id as id')
-                ->join($joinDef->link_table, $joinDef->table.".".$joinDef->field, $joinDef->link_table.".".$joinDef->link_field)
-                ->whereIn($joinDef->field, $userAllowedIds)
-                ->get()->pluck('id');
-        
+       // dd($userAllowedIds);
+        $joinDef = $this->findParentJoinDef($acl);
+        if($acl->acl_key_type == '1-n') {
+            $allowedIds = \DB::table($joinDef->table)
+                    ->select($joinDef->table.'.id as id')
+                    ->join($joinDef->link_table, $joinDef->table.".".$joinDef->field, $joinDef->link_table.".".$joinDef->link_field)
+                    ->whereIn($joinDef->field, $userAllowedIds)
+                    ->get()->pluck('id');
+        }
+
+        if($acl->acl_key_type == 'n-n') {
+            $allowedIds = \DB::table($joinDef->table)
+                    ->select($joinDef->link_table.'.id as id')
+                    ->join($joinDef->link_table, $joinDef->table.".".$joinDef->field, $joinDef->link_table.".".$joinDef->link_field)
+                    ->whereIn($acl->acl_res_field, $userAllowedIds)
+                    ->get()->pluck('id');
+
+        }
         
         $this->addAppendAllowedIds($allowedIds);
         
     }
     
-    public function findParentJoinDef($acl, $linkType) {
-        if($linkType == 'hasMany') {
+    public function findParentJoinDef($acl) {
+        
+        if($acl->acl_key_type == '1-n') {
             $joinDef = \DB::table('eds_fields')->where('table', $acl->table)->where('link_table', $acl->acl_res_table)->first();
         }
+                
+
+        if($acl->acl_key_type == 'n-n') {
+            $joinDef = \DB::table('eds_fields')->where('table', $acl->acl_res_table)->where('link_table', $acl->table)->first();
+        }
+
         if(!empty($joinDef)) {
             return $joinDef;
         } else {
-            abort('can not find join def in acl AclService.php');
+            // dd('can not find acl def');
+            abort(500,'can not find join def in acl AclService.php');
         }
     }
     
