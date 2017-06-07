@@ -42,7 +42,8 @@ class AclService {
                         ->where($acl->acl_user_table.".user_id", $userId)
                         ->get();
             }
-
+            
+            $allowedIds = [];
             if(!empty($allowed)) {
                 $allowedIds = $allowed->pluck('id');
             }
