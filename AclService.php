@@ -43,8 +43,10 @@ class AclService {
                         ->get();
             }
 
-
-            $allowedIds = $allowed->pluck('id');
+            if(!empty($allowed)) {
+                $allowedIds = $allowed->pluck('id');
+            }
+            
 //            dd($allowedIds);
             
             if($acl->acl_key_type == "own") {
